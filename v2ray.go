@@ -92,12 +92,28 @@ func (r *resolution) resolve(allFeatures []features.Feature) (bool, error) {
 }
 
 // Instance combines all functionalities in V2Ray.
+//
+// 阅读备注(概念模型):Instance 是运行时管理者,本身不做任何具体功能,
+// 只持有一个 Feature 数组并负责三件事:装配(AddFeature)、依赖解析(RequireFeatures)、
+// 生命周期(Start/Close 级联)。Feature 才是功能的实现——dispatcher、路由、DNS、
+// 出入站管理器……全部抽象模型都是下面数组里的一项。
+//
+// 每个 Feature 只需实现三个方法(见 features/feature.go):
+//
+//	Type() interface{} // 返回"接口类型的 nil 指针"作查找键,如 (*Dispatcher)(nil)
+//	Start() error      // Instance.Start 级联调用
+//	Close() error      // Instance.Close 级联调用
+//
+// 组件互取依赖统一走 GetFeature(Type())(本文件 :361)。
 type Instance struct {
-	access             sync.Mutex
-	features           []features.Feature
+	access sync.Mutex
+	// features 即整个运行时:一个 v2ray 进程 = 这堆 Feature 的集合。
+	features []features.Feature
+	// 依赖未凑齐而挂起的回调;每次 AddFeature 后重试 resolve(见 RequireFeatures)。
 	featureResolutions []resolution
-	running            bool
-	env                environment.RootEnvironment
+	// Start 后为 true;此后 AddFeature 进来的新 feature 会直接热启动。
+	running bool
+	env     environment.RootEnvironment
 
 	ctx context.Context
 }
