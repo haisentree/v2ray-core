@@ -27,3 +27,7 @@ func runIsTheFirst(i, j *base.Command) bool {
 	}
 	return left < right
 }
+
+// ./main/main version
+// ./main/main test -c script/config/sample.json
+// ./main/main run -c script/config/sample.json
